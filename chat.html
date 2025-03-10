@@ -211,7 +211,7 @@
             const token = localStorage.getItem('token');
             
             try {
-                const response = await fetch(`http://127.0.0.1:5000/uploads/document/${docId}`, {
+                const response = await fetch(`https://ragstudybot-production.up.railway.app/chat/ask/${docId}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -257,7 +257,7 @@
             const token = localStorage.getItem('token');
             
             try {
-                const response = await fetch(`http://127.0.0.1:5000/chat/ask/${docId}`, {
+                const response = await fetch(`https://ragstudybot-production.up.railway.app/chat/ask/${docId}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
