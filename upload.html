@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document AI Chat - Upload Document</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        #dropzone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 15px;
+            transition: background-color 0.3s;
+        }
+        #dropzone:hover, #dropzone.dragover {
+            background-color: #f5f5f5;
+            border-color: #999;
+        }
+        #fileInput {
+            display: none;
+        }
+        .file-info {
+            margin-top: 10px;
+            color: #666;
+            display: none;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        button:disabled {
+            background-color: #a8a8a8;
+            cursor: not-allowed;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+            display: none;
+        }
+        .progress-container {
+            margin-top: 10px;
+            display: none;
+        }
+        .progress-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            height: 12px;
+            overflow: hidden;
+        }
+        .progress {
+            height: 100%;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logout {
+            text-decoration: none;
+            color: #4285f4;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Upload Document</h1>
+            <a href="#" class="logout" id="logoutLink">Logout</a>
+        </div>
+        <form id="uploadForm">
+            <div class="form-group">
+                <div id="dropzone">
+                    <p>Drag & drop your file here or click to select</p>
+                    <input type="file" id="fileInput" accept=".pdf,.docx,.txt">
+                </div>
+                <div class="file-info" id="fileInfo"></div>
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress" id="progressBar"></div>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" id="uploadButton" disabled>Upload Document</button>
+            <div id="errorMessage" class="error"></div>
+            <div id="successMessage" class="success"></div>
+        </form>
+    </div>
+
+    <script>
+        // Check if token exists, redirect to login if not
+        document.addEventListener('DOMContentLoaded', function() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'index.html';
+                return;
+            }
+        });
+
+        // Logout functionality
+        document.getElementById('logoutLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        });
+
+        // File upload handling
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const uploadButton = document.getElementById('uploadButton');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        let selectedFile = null;
+
+        // Open file dialog when dropzone is clicked
+        dropzone.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // Handle drag and drop events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, function() {
+                dropzone.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, function() {
+                dropzone.classList.remove('dragover');
+            });
+        });
+
+        // Handle file drop
+        dropzone.addEventListener('drop', function(e) {
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                handleFile(files[0]);
+            }
+        });
+
+        // Handle file selection
+        fileInput.addEventListener('change', function() {
+            if (fileInput.files.length) {
+                handleFile(fileInput.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            selectedFile = file;
+            
+            // Display file info
+            fileInfo.textContent = `Selected file: ${file.name} (${formatFileSize(file.size)})`;
+            fileInfo.style.display = 'block';
+            
+            // Enable upload button
+            uploadButton.disabled = false;
+            
+            // Hide previous messages
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' bytes';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            else return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        // Handle form submission
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!selectedFile) {
+                errorMessage.textContent = 'Please select a file first';
+                errorMessage.style.display = 'block';
+                return;
+            }
+            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Create FormData object
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            
+            // Show progress bar
+            progressContainer.style.display = 'block';
+            uploadButton.disabled = true;
+            
+            try {
+                // Use XMLHttpRequest to track upload progress
+                const xhr = new XMLHttpRequest();
+                
+                // Set up progress tracking
+                xhr.upload.addEventListener('progress', function(e) {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        progressBar.style.width = percentComplete + '%';
+                    }
+                });
+                
+                // Set up completion handler
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        const response = JSON.parse(xhr.responseText);
+                        
+                        // Show success message
+                        successMessage.textContent = 'Document uploaded successfully!';
+                        successMessage.style.display = 'block';
+                        
+                        // Redirect to chat page with the document ID
+                        setTimeout(() => {
+                            window.location.href = `chat.html?doc_id=${response.file_id}`;
+                        }, 1000);
+                    } else {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMessage.textContent = response.message || 'Upload failed. Please try again.';
+                        errorMessage.style.display = 'block';
+                        uploadButton.disabled = false;
+                    }
+                };
+                
+                // Set up error handler
+                xhr.onerror = function() {
+                    errorMessage.textContent = 'Network error. Please try again.';
+                    errorMessage.style.display = 'block';
+                    uploadButton.disabled = false;
+                };
+                
+                // Open and send the request
+                xhr.open('POST', 'http://127.0.0.1:5000/uploads/upload', true);
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                xhr.send(formData);
+                
+            } catch (error) {
+                errorMessage.textContent = 'An error occurred. Please try again later.';
+                errorMessage.style.display = 'block';
+                console.error('Upload error:', error);
+                uploadButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
